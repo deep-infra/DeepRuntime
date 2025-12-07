@@ -44,11 +44,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/deepruntime-cli"
+    "url": "https://github.com/deep-infra/DeepRuntime"
   },
-  "homepage": "https://github.com/your-org/deepruntime-cli#readme",
+  "homepage": "https://github.com/deep-infra/DeepRuntime#readme",
   "bugs": {
-    "url": "https://github.com/your-org/deepruntime-cli/issues"
+    "url": "https://github.com/deep-infra/DeepRuntime/issues"
   },
   "dependencies": {
     "@langchain/core": "^0.3.0",
