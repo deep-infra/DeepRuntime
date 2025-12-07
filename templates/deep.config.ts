@@ -5,11 +5,10 @@
  * 使用 TypeScript 编写，享受类型检查和 IDE 智能提示。
  * 
  * 快速开始：
- * 1. 复制 .env.example 为 .env
- * 2. 在 .env 中设置您的 DEEPSEEK_API_KEY
- * 3. 运行 npm run dev 开始对话
+ * 1. 在下方 apiKey 处填入您的 API Key
+ * 2. 运行 npm run dev 开始对话
  * 
- * 文档: https://github.com/your-org/deepruntime-cli
+ * 文档: https://github.com/deep-infra/DeepRuntime
  */
 
 import { defineConfig } from 'deepruntime-cli';
@@ -49,31 +48,28 @@ export default defineConfig({
 
     /**
      * 模型配置
-     * 
      * DeepRuntime 支持任何 OpenAI 兼容的 API：
-     * - DeepSeek: https://api.deepseek.com/v1 (推荐，高性价比)
-     * - OpenAI: https://api.openai.com/v1
-     * - Ollama: http://localhost:11434/v1 (本地运行)
-     * - Azure OpenAI, Claude API (通过兼容层) 等
      */
     model: {
-      // 模型提供商类型
+      // 模型提供商类型（使用 OpenAI 兼容接口）
       provider: 'openai',
 
-      // 模型名称
-      // DeepSeek: deepseek-chat, deepseek-reasoner
-      // OpenAI: gpt-4o, gpt-4o-mini, gpt-3.5-turbo
-      // Ollama: llama3, mistral, codellama 等
+      // 模型名称（根据您使用的平台填写）
       modelName: 'deepseek-chat',
 
       configuration: {
-        // API 基础 URL
-        // DeepSeek API（默认，高性价比推荐）
+        // API 基础 URL（根据平台修改）
         baseURL: 'https://api.deepseek.com/v1',
+        // API Key（在这里直接填入您的密钥）
+        apiKey: 'your-api-key-here',
 
-        // API Key 从环境变量读取
-        // 在 .env 文件中设置 DEEPSEEK_API_KEY
-        // 也支持 OPENAI_API_KEY 和 ANTHROPIC_API_KEY
+        // OpenAI
+        // baseURL: 'https://api.openai.com/v1',
+        // apiKey: 'sk-xxx',  // 从 https://platform.openai.com/ 获取
+        
+        // Ollama 本地运行（无需 API Key）
+        // baseURL: 'http://localhost:11434/v1',
+        // apiKey: 'ollama',  // Ollama 不需要真实 key，随便填
       },
     },
   },
@@ -122,6 +118,8 @@ export default defineConfig({
 
     // 沙箱模式，MVP 版本仅支持 'local'
     sandbox: 'local',
+
+    // 启用调试日志（显示详细的执行信息）
+    // debug: true,
   },
 });
-

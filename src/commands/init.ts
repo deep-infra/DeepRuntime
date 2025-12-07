@@ -17,7 +17,6 @@ interface InitOptions {
  */
 const FILES_TO_CREATE = [
   'deep.config.ts',
-  '.env',
   'tsconfig.json',
   'package.json',
   'src/tools/example-tool.ts',
@@ -71,8 +70,15 @@ const CONFIG_TEMPLATE = `import { defineConfig } from 'deepruntime-cli';
 /**
  * DeepRuntime 配置文件
  * 
- * 使用 DeepSeek 作为默认模型（高性价比）
- * API Key 从环境变量读取
+ * 快速开始：
+ * 1. 在下方 apiKey 处填入您的 API Key
+ * 2. 运行 npm run dev 开始对话
+ * 
+ * 支持的平台：
+ * - DeepSeek: https://api.deepseek.com/v1
+ * - 硅基流动: https://api.siliconflow.cn/v1
+ * - OpenAI: https://api.openai.com/v1
+ * - Ollama: http://localhost:11434/v1
  */
 export default defineConfig({
   agent: {
@@ -84,8 +90,23 @@ export default defineConfig({
       provider: 'openai',
       modelName: 'deepseek-chat',
       configuration: {
+        // ========================================
+        // 👇 在这里配置您的 API
+        // ========================================
         baseURL: 'https://api.deepseek.com/v1',
-        // API Key 会自动从环境变量 DEEPSEEK_API_KEY 读取
+        apiKey: 'your-api-key-here',
+
+        // 硅基流动 SiliconFlow
+        // baseURL: 'https://api.siliconflow.cn/v1',
+        // apiKey: 'sk-xxx',
+
+        // OpenAI
+        // baseURL: 'https://api.openai.com/v1',
+        // apiKey: 'sk-xxx',
+
+        // Ollama 本地
+        // baseURL: 'http://localhost:11434/v1',
+        // apiKey: 'ollama',
       },
     },
   },
@@ -100,28 +121,10 @@ export default defineConfig({
     // },
   },
   runtime: {
-    timeout: 60000,  // 60 秒超时
+    timeout: 60000,
     sandbox: 'local',
   },
 });
-`;
-
-/**
- * .env.example 模板内容
- */
-const ENV_TEMPLATE = `# DeepRuntime 环境变量配置
-
-# DeepSeek API Key（推荐，高性价比）
-DEEPSEEK_API_KEY=your-deepseek-api-key-here
-
-# 或使用 OpenAI API Key
-# OPENAI_API_KEY=your-openai-api-key-here
-
-# 或使用 Anthropic API Key
-# ANTHROPIC_API_KEY=your-anthropic-api-key-here
-
-# 调试模式（可选）
-# DEBUG=true
 `;
 
 /**
@@ -260,22 +263,6 @@ export async function initCommand(options: InitOptions): Promise<void> {
     createdCount++;
   }
 
-  // .env.example
-  if (await createFile(
-    resolve(targetDir, '.env.example'),
-    ENV_TEMPLATE,
-    force
-  )) {
-    createdCount++;
-  }
-
-  // 同时创建 .env（如果不存在）
-  const envPath = resolve(targetDir, '.env');
-  if (!existsSync(envPath)) {
-    await createFile(envPath, ENV_TEMPLATE, false);
-    createdCount++;
-  }
-
   // tsconfig.json
   if (await createFile(
     resolve(targetDir, 'tsconfig.json'),
@@ -313,8 +300,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
     logger.info('Next steps:');
     logger.raw('');
     logger.raw('  1. Configure your API key:');
-    logger.raw('     cp .env.example .env');
-    logger.raw('     # Edit .env and set your DEEPSEEK_API_KEY');
+    logger.raw('     # Edit deep.config.ts and set your apiKey');
     logger.raw('');
     logger.raw('  2. Install dependencies:');
     logger.raw('     npm install');

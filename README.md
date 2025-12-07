@@ -28,9 +28,13 @@ deep-run init
 
 ### 配置 API Key
 
-```bash
-# 编辑 .env 文件
-DEEPSEEK_API_KEY=your-api-key-here
+编辑 `deep.config.ts`，填入您的 API Key：
+
+```typescript
+configuration: {
+  baseURL: 'https://api.deepseek.com/v1',
+  apiKey: 'your-api-key-here',
+}
 ```
 
 ### 开始对话
@@ -62,7 +66,9 @@ export default defineConfig({
       provider: 'openai',
       modelName: 'deepseek-chat',
       configuration: {
+        // 支持 DeepSeek / 硅基流动 / OpenAI / Ollama 等
         baseURL: 'https://api.deepseek.com/v1',
+        apiKey: 'your-api-key-here',
       },
     },
   },
@@ -112,13 +118,6 @@ export default {
   }
 }
 ```
-
-## 📦 技术栈
-
-- **Runtime**: Node.js + TypeScript
-- **Agent**: deepagents + LangChain
-- **Protocol**: @modelcontextprotocol/sdk
-- **CLI**: commander + chalk
 
 ## 📄 License
 

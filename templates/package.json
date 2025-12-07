@@ -18,7 +18,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "deepruntime-cli": "^1.0.0",
+    "deepruntime-cli": "^0.1.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
