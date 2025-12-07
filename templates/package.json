@@ -1,0 +1,32 @@
+{
+  "name": "my-deep-agent",
+  "version": "1.0.0",
+  "description": "My DeepRuntime Agent Project",
+  "type": "module",
+  "scripts": {
+    "dev": "deep-run dev",
+    "start": "deep-run start",
+    "serve": "deep-run serve",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "agent",
+    "ai",
+    "deepseek",
+    "langchain"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "deepruntime-cli": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
