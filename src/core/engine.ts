@@ -38,7 +38,8 @@ interface AgentEvent {
 export class DeepRuntimeEngine {
   private config: DeepConfig;
   private llm: ChatOpenAI | null = null;
-  private agent: ReturnType<typeof createDeepAgent> | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private agent: any = null;
   private tools: DynamicStructuredTool[] = [];
   private mcpManager: McpClientManager | null = null;
   private readline: Interface | null = null;
@@ -144,10 +145,12 @@ export class DeepRuntimeEngine {
       throw new Error('LLM not initialized');
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.agent = createDeepAgent({
+      llm: this.llm,
       tools: this.tools,
-      systemPrompt: this.config.agent.systemPrompt,
-    });
+      prompt: this.config.agent.systemPrompt,
+    } as any);
 
     logger.debug('Agent created with deepagents framework');
   }
@@ -263,7 +266,8 @@ export class DeepRuntimeEngine {
 
     try {
       // 调用 agent
-      const result = await this.agent.invoke({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (this.agent as any).invoke({
         messages: [{ role: 'user', content: input }],
       });
 
@@ -271,10 +275,12 @@ export class DeepRuntimeEngine {
       this.processAgentEvents(result);
 
       // 获取最终响应
-      const lastMessage = result.messages[result.messages.length - 1];
-      const response = typeof lastMessage.content === 'string'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const messages = result.messages as any[];
+      const lastMessage = messages[messages.length - 1];
+      const response = typeof lastMessage?.content === 'string'
         ? lastMessage.content
-        : JSON.stringify(lastMessage.content);
+        : JSON.stringify(lastMessage?.content ?? '');
 
       logger.newline();
       logger.divider();
@@ -293,8 +299,10 @@ export class DeepRuntimeEngine {
   /**
    * 处理 Agent 事件
    */
-  private processAgentEvents(result: { messages: Array<{ role: string; content: unknown; name?: string }> }): void {
-    for (const message of result.messages) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private processAgentEvents(result: any): void {
+    const messages = (result?.messages ?? []) as Array<{ role?: string; content?: unknown; name?: string }>;
+    for (const message of messages) {
       if (message.role === 'assistant') {
         // 思考内容
         if (typeof message.content === 'string' && message.content) {

@@ -152,11 +152,13 @@ export class McpClientManager {
   ): Promise<void> {
     logger.debug(`Connecting to MCP server: ${name}`);
 
-    // 合并环境变量
-    const env = {
-      ...process.env,
-      ...config.env,
-    };
+    // 合并环境变量，过滤掉 undefined 值
+    const env: Record<string, string> = {};
+    for (const [key, value] of Object.entries({ ...process.env, ...config.env })) {
+      if (value !== undefined) {
+        env[key] = value;
+      }
+    }
 
     // 启动子进程
     const childProcess = spawn(config.command, config.args, {

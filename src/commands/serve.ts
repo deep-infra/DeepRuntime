@@ -30,7 +30,9 @@ function zodToJsonSchema(zodSchema: DynamicStructuredTool['schema']): {
   required?: string[];
 } {
   // 简单转换，获取 schema 的 shape
-  const shape = zodSchema.shape as Record<string, { description?: string; _def?: { typeName?: string } }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemaAny = zodSchema as any;
+  const shape = (schemaAny.shape ?? {}) as Record<string, { description?: string; _def?: { typeName?: string } }>;
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
 
