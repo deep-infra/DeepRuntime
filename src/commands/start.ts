@@ -3,7 +3,7 @@ import { DeepRuntimeEngine } from '../core/engine.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * start 命令选项
+ * start command options
  */
 interface StartOptions {
   task: string;
@@ -11,20 +11,20 @@ interface StartOptions {
 }
 
 /**
- * start 命令实现
- * 执行单次任务（无头模式），适合 CI/CD 和 Cron 任务
+ * start command implementation
+ * Execute single task (headless mode), suitable for CI/CD and cron jobs
  */
 export async function startCommand(options: StartOptions): Promise<void> {
   const { task, timeout } = options;
   let engine: DeepRuntimeEngine | null = null;
 
-  // 验证必需参数
+  // Validate required parameters
   if (!task || task.trim() === '') {
     logger.error('Task description is required. Use --task "your task description"');
     process.exit(1);
   }
 
-  // 解析超时时间
+  // Parse timeout
   let timeoutMs: number | undefined;
   if (timeout) {
     timeoutMs = parseInt(timeout, 10);
@@ -34,7 +34,7 @@ export async function startCommand(options: StartOptions): Promise<void> {
     }
   }
 
-  // 优雅退出处理
+  // Graceful exit handler
   const shutdown = async (exitCode: number) => {
     if (engine) {
       await engine.shutdown();
@@ -42,12 +42,12 @@ export async function startCommand(options: StartOptions): Promise<void> {
     process.exit(exitCode);
   };
 
-  // 注册信号处理
+  // Register signal handlers
   process.on('SIGINT', () => shutdown(130));
   process.on('SIGTERM', () => shutdown(143));
 
   try {
-    // 1. 加载配置
+    // 1. Load configuration
     logger.info('Loading configuration...');
 
     let config;
@@ -63,7 +63,7 @@ export async function startCommand(options: StartOptions): Promise<void> {
       process.exit(1);
     }
 
-    // 合并超时配置
+    // Merge timeout configuration
     if (timeoutMs) {
       config = {
         ...config,
@@ -74,10 +74,10 @@ export async function startCommand(options: StartOptions): Promise<void> {
       };
     }
 
-    // 2. 创建引擎
+    // 2. Create engine
     engine = new DeepRuntimeEngine(config);
 
-    // 3. 初始化引擎
+    // 3. Initialize engine
     logger.info('Initializing agent...');
 
     try {
@@ -88,13 +88,13 @@ export async function startCommand(options: StartOptions): Promise<void> {
       process.exit(1);
     }
 
-    // 4. 执行任务
+    // 4. Execute task
     logger.info(`Executing task: ${task.substring(0, 100)}${task.length > 100 ? '...' : ''}`);
     logger.divider();
 
     let result: string;
     
-    // 设置超时
+    // Set timeout
     const timeoutPromise = timeoutMs
       ? new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error(`Task timed out after ${timeoutMs}ms`)), timeoutMs)
@@ -114,18 +114,18 @@ export async function startCommand(options: StartOptions): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       logger.error(`Task failed: ${message}`);
       await shutdown(1);
-      return; // TypeScript 不知道 shutdown 会 exit
+      return; // TypeScript doesn't know shutdown will exit
     }
 
-    // 5. 输出结果
+    // 5. Output result
     logger.divider();
     logger.success('Task completed successfully');
     logger.newline();
 
-    // 输出最终结果
+    // Output final result
     console.log(result);
 
-    // 6. 清理并退出
+    // 6. Cleanup and exit
     await shutdown(0);
 
   } catch (error) {
@@ -134,4 +134,3 @@ export async function startCommand(options: StartOptions): Promise<void> {
     await shutdown(1);
   }
 }
-

@@ -1,14 +1,12 @@
 #!/usr/bin/env node
-
 /**
  * DeepRuntime CLI
  * Config-as-Code Agent Runtime Engine
  */
-
 import { Command } from 'commander';
 import { logger } from '../utils/logger.js';
 
-// 创建 CLI 程序
+// Create CLI program
 const program = new Command();
 
 program
@@ -16,7 +14,7 @@ program
   .description('Config-as-Code Agent Runtime Engine for developers')
   .version('1.0.0');
 
-// init 命令
+// init command
 program
   .command('init')
   .description('Initialize a new DeepRuntime project')
@@ -33,7 +31,7 @@ program
     }
   });
 
-// dev 命令
+// dev command
 program
   .command('dev')
   .description('Start interactive development mode (REPL)')
@@ -48,7 +46,7 @@ program
     }
   });
 
-// start 命令
+// start command
 program
   .command('start')
   .description('Execute a single task in headless mode')
@@ -65,7 +63,7 @@ program
     }
   });
 
-// serve 命令
+// serve command
 program
   .command('serve')
   .description('Start as MCP server for IDE integration')
@@ -75,12 +73,11 @@ program
       await serveCommand();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      // serve 模式下使用 stderr
+      // serve mode uses stderr
       console.error(`Error: ${message}`);
       process.exit(1);
     }
   });
 
-// 解析命令行参数
+// Parse command line arguments
 program.parse();
-

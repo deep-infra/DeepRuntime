@@ -1,11 +1,11 @@
 import { existsSync } from 'node:fs';
-import { mkdir, writeFile, readdir } from 'node:fs/promises';
-import { resolve, join, dirname } from 'node:path';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '../utils/logger.js';
 
 /**
- * init 命令选项
+ * init command options
  */
 interface InitOptions {
   force?: boolean;
@@ -13,28 +13,28 @@ interface InitOptions {
 }
 
 /**
- * 需要创建的文件列表
+ * Template files mapping
+ * key: template path (relative to templates/)
+ * value: target path (relative to project root)
  */
-const FILES_TO_CREATE = [
-  'deep.config.ts',
-  'tsconfig.json',
-  'package.json',
-  'src/tools/example-tool.ts',
-];
+const TEMPLATE_FILES: Record<string, string> = {
+  'deep.config.ts': 'deep.config.ts',
+  'tsconfig.json': 'tsconfig.json',
+  'package.json': 'package.json',
+  'tools/example-tool.ts': 'src/tools/example-tool.ts',
+};
 
 /**
- * 获取模板目录路径
+ * Get templates directory path
  */
 function getTemplatesDir(): string {
-  // 获取当前模块的目录
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  
-  // 模板目录相对于 dist/commands/ 或 src/commands/
-  // 在构建后位于 dist/commands/，模板在 ../templates/
+
+  // Template directory relative to compiled location
   const possiblePaths = [
-    resolve(__dirname, '../../templates'),  // 从 dist/commands/ 到 templates/
-    resolve(__dirname, '../../../templates'), // 开发模式
+    resolve(__dirname, '../../templates'),    // dist/commands/ -> templates/
+    resolve(__dirname, '../../../templates'), // dev mode or other structures
   ];
 
   for (const path of possiblePaths) {
@@ -47,15 +47,15 @@ function getTemplatesDir(): string {
 }
 
 /**
- * 检查文件是否存在
+ * Check existing files in target directory
  */
 async function checkExistingFiles(targetDir: string): Promise<string[]> {
   const existing: string[] = [];
 
-  for (const file of FILES_TO_CREATE) {
-    const filePath = resolve(targetDir, file);
+  for (const targetPath of Object.values(TEMPLATE_FILES)) {
+    const filePath = resolve(targetDir, targetPath);
     if (existsSync(filePath)) {
-      existing.push(file);
+      existing.push(targetPath);
     }
   }
 
@@ -63,174 +63,45 @@ async function checkExistingFiles(targetDir: string): Promise<string[]> {
 }
 
 /**
- * deep.config.ts 模板内容
+ * Copy template file to target directory
  */
-const CONFIG_TEMPLATE = `import { defineConfig } from 'deepruntime-cli';
-
-/**
- * DeepRuntime 配置文件
- * 
- * 快速开始：
- * 1. 在下方 apiKey 处填入您的 API Key
- * 2. 运行 npm run dev 开始对话
- * 
- * 支持的平台：
- * - DeepSeek: https://api.deepseek.com/v1
- * - 硅基流动: https://api.siliconflow.cn/v1
- * - OpenAI: https://api.openai.com/v1
- * - Ollama: http://localhost:11434/v1
- */
-export default defineConfig({
-  agent: {
-    name: 'my-agent',
-    systemPrompt: \`你是一个智能助手，能够帮助用户完成各种任务。
-你可以使用提供的工具来获取信息和执行操作。
-请用中文回复用户。\`,
-    model: {
-      provider: 'openai',
-      modelName: 'deepseek-chat',
-      configuration: {
-        // ========================================
-        // 👇 在这里配置您的 API
-        // ========================================
-        baseURL: 'https://api.deepseek.com/v1',
-        apiKey: 'your-api-key-here',
-
-        // 硅基流动 SiliconFlow
-        // baseURL: 'https://api.siliconflow.cn/v1',
-        // apiKey: 'sk-xxx',
-
-        // OpenAI
-        // baseURL: 'https://api.openai.com/v1',
-        // apiKey: 'sk-xxx',
-
-        // Ollama 本地
-        // baseURL: 'http://localhost:11434/v1',
-        // apiKey: 'ollama',
-      },
-    },
-  },
-  tools: {
-    localDir: './src/tools',
-    // MCP Server 配置示例（取消注释以启用）
-    // mcpServers: {
-    //   filesystem: {
-    //     command: 'npx',
-    //     args: ['-y', '@modelcontextprotocol/server-filesystem', '.'],
-    //   },
-    // },
-  },
-  runtime: {
-    timeout: 60000,
-    sandbox: 'local',
-  },
-});
-`;
-
-/**
- * tsconfig.json 模板内容
- */
-const TSCONFIG_TEMPLATE = `{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ES2022"],
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "types": ["node"]
-  },
-  "include": ["src/**/*", "deep.config.ts"],
-  "exclude": ["node_modules", "dist"]
-}
-`;
-
-/**
- * package.json 模板内容
- */
-const PACKAGE_TEMPLATE = `{
-  "name": "my-deep-agent",
-  "version": "1.0.0",
-  "description": "My DeepRuntime Agent Project",
-  "type": "module",
-  "scripts": {
-    "dev": "deep-run dev",
-    "start": "deep-run start",
-    "serve": "deep-run serve"
-  },
-  "dependencies": {
-    "deepruntime-cli": "^1.0.0",
-    "zod": "^3.23.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.6.0"
-  }
-}
-`;
-
-/**
- * 示例工具模板内容
- */
-const EXAMPLE_TOOL_TEMPLATE = `import { z } from 'zod';
-
-/**
- * 示例工具：Hello World
- * 
- * 这是一个简单的示例工具，展示如何定义自定义工具。
- * 工具需要导出 { name, description, schema, func }
- */
-export default {
-  name: 'hello',
-  description: '向用户打招呼的工具。输入名字，返回问候语。',
-  schema: z.object({
-    name: z.string().describe('要问候的名字'),
-    language: z.enum(['zh', 'en']).default('zh').describe('问候语言'),
-  }),
-  func: async ({ name, language }: { name: string; language: 'zh' | 'en' }) => {
-    if (language === 'en') {
-      return \`Hello, \${name}! Welcome to DeepRuntime.\`;
-    }
-    return \`你好，\${name}！欢迎使用 DeepRuntime。\`;
-  },
-};
-`;
-
-/**
- * 创建文件
- */
-async function createFile(
-  filePath: string,
-  content: string,
+async function copyTemplateFile(
+  templatesDir: string,
+  targetDir: string,
+  templatePath: string,
+  targetPath: string,
   force: boolean
 ): Promise<boolean> {
-  const dir = dirname(filePath);
+  const srcPath = resolve(templatesDir, templatePath);
+  const destPath = resolve(targetDir, targetPath);
+  const destDir = dirname(destPath);
 
-  // 创建目录
-  if (!existsSync(dir)) {
-    await mkdir(dir, { recursive: true });
-  }
-
-  // 检查文件是否存在
-  if (existsSync(filePath) && !force) {
-    logger.warn(`Skipped: ${filePath} (already exists, use --force to overwrite)`);
+  // Check if template file exists
+  if (!existsSync(srcPath)) {
+    logger.warn(`Template not found: ${templatePath}`);
     return false;
   }
 
-  // 写入文件
-  await writeFile(filePath, content, 'utf-8');
-  logger.success(`Created: ${filePath}`);
+  // Create target directory
+  if (!existsSync(destDir)) {
+    await mkdir(destDir, { recursive: true });
+  }
+
+  // Check if target file exists
+  if (existsSync(destPath) && !force) {
+    logger.warn(`Skipped: ${targetPath} (already exists, use --force to overwrite)`);
+    return false;
+  }
+
+  // Read and write file
+  const content = await readFile(srcPath, 'utf-8');
+  await writeFile(destPath, content, 'utf-8');
+  logger.success(`Created: ${targetPath}`);
   return true;
 }
 
 /**
- * init 命令实现
+ * init command implementation
  */
 export async function initCommand(options: InitOptions): Promise<void> {
   const targetDir = resolve(process.cwd(), options.dir || '.');
@@ -240,7 +111,16 @@ export async function initCommand(options: InitOptions): Promise<void> {
   logger.info(`Initializing project in: ${targetDir}`);
   logger.newline();
 
-  // 检查已存在的文件
+  // Get templates directory
+  let templatesDir: string;
+  try {
+    templatesDir = getTemplatesDir();
+  } catch (error) {
+    logger.error('Failed to locate templates directory');
+    process.exit(1);
+  }
+
+  // Check existing files
   if (!force) {
     const existing = await checkExistingFiles(targetDir);
     if (existing.length > 0) {
@@ -251,46 +131,16 @@ export async function initCommand(options: InitOptions): Promise<void> {
     }
   }
 
-  // 创建文件
+  // Copy template files
   let createdCount = 0;
 
-  // deep.config.ts
-  if (await createFile(
-    resolve(targetDir, 'deep.config.ts'),
-    CONFIG_TEMPLATE,
-    force
-  )) {
-    createdCount++;
+  for (const [templatePath, targetPath] of Object.entries(TEMPLATE_FILES)) {
+    if (await copyTemplateFile(templatesDir, targetDir, templatePath, targetPath, force)) {
+      createdCount++;
+    }
   }
 
-  // tsconfig.json
-  if (await createFile(
-    resolve(targetDir, 'tsconfig.json'),
-    TSCONFIG_TEMPLATE,
-    force
-  )) {
-    createdCount++;
-  }
-
-  // package.json
-  if (await createFile(
-    resolve(targetDir, 'package.json'),
-    PACKAGE_TEMPLATE,
-    force
-  )) {
-    createdCount++;
-  }
-
-  // src/tools/example-tool.ts
-  if (await createFile(
-    resolve(targetDir, 'src/tools/example-tool.ts'),
-    EXAMPLE_TOOL_TEMPLATE,
-    force
-  )) {
-    createdCount++;
-  }
-
-  // 输出结果
+  // Output result
   logger.newline();
   logger.divider();
 
@@ -309,10 +159,9 @@ export async function initCommand(options: InitOptions): Promise<void> {
     logger.raw('     npm run dev');
     logger.raw('');
     logger.raw('  Or run a single task:');
-    logger.raw('     npm run start -- --task "你好"');
+    logger.raw('     npm run start -- --task "hello"');
     logger.raw('');
   } else {
     logger.info('No files were created.');
   }
 }
-

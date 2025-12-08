@@ -3,10 +3,10 @@ import { DeepRuntimeEngine } from '../core/engine.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * 简单的加载动画
+ * Simple loading spinner
  */
 class Spinner {
-  private frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  private frames = ['|', '/', '-', '\\'];
   private currentFrame = 0;
   private interval: ReturnType<typeof setInterval> | null = null;
   private message: string;
@@ -27,7 +27,7 @@ class Spinner {
       clearInterval(this.interval);
       this.interval = null;
     }
-    // 清除当前行
+    // Clear current line
     process.stdout.write('\r' + ' '.repeat(this.message.length + 10) + '\r');
     
     if (success) {
@@ -42,13 +42,13 @@ class Spinner {
 }
 
 /**
- * dev 命令实现
- * 启动交互式开发模式 (REPL)
+ * dev command implementation
+ * Start interactive development mode (REPL)
  */
 export async function devCommand(): Promise<void> {
   let engine: DeepRuntimeEngine | null = null;
 
-  // 优雅退出处理
+  // Graceful exit handler
   const shutdown = async () => {
     if (engine) {
       logger.newline();
@@ -58,12 +58,12 @@ export async function devCommand(): Promise<void> {
     process.exit(0);
   };
 
-  // 注册信号处理
+  // Register signal handlers
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
   try {
-    // 1. 加载配置
+    // 1. Load configuration
     const configSpinner = new Spinner('Loading configuration...');
     configSpinner.start();
 
@@ -81,10 +81,10 @@ export async function devCommand(): Promise<void> {
       process.exit(1);
     }
 
-    // 2. 创建引擎
+    // 2. Create engine
     engine = new DeepRuntimeEngine(config);
 
-    // 3. 初始化引擎
+    // 3. Initialize engine
     const initSpinner = new Spinner('Initializing agent...');
     initSpinner.start();
 
@@ -97,7 +97,7 @@ export async function devCommand(): Promise<void> {
       process.exit(1);
     }
 
-    // 4. 显示工具信息
+    // 4. Display tool info
     const tools = engine.getToolNames();
     logger.info(`Available tools: ${tools.length}`);
     if (tools.length > 0 && tools.length <= 10) {
@@ -107,7 +107,7 @@ export async function devCommand(): Promise<void> {
       logger.debug(`  ... and ${tools.length - 5} more`);
     }
 
-    // 5. 启动交互模式
+    // 5. Start interactive mode
     await engine.runInteractive();
 
   } catch (error) {
@@ -121,4 +121,3 @@ export async function devCommand(): Promise<void> {
     process.exit(1);
   }
 }
-

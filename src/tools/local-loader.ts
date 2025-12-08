@@ -1,14 +1,14 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import { bundleRequire } from 'bundle-require';
 import { glob } from 'glob';
 import { existsSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
 import { resolve, basename } from 'node:path';
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
 import type { LocalToolDefinition } from '../types/index.js';
 
 /**
- * 验证工具导出结构是否有效
+ * Validate if tool export structure is valid
  */
 function isValidToolExport(obj: unknown): obj is LocalToolDefinition {
   if (!obj || typeof obj !== 'object') {
@@ -17,7 +17,7 @@ function isValidToolExport(obj: unknown): obj is LocalToolDefinition {
 
   const tool = obj as Record<string, unknown>;
 
-  // 检查必要字段
+  // Check required fields
   if (typeof tool.name !== 'string' || !tool.name) {
     return false;
   }
@@ -35,7 +35,7 @@ function isValidToolExport(obj: unknown): obj is LocalToolDefinition {
 }
 
 /**
- * 包装工具函数，添加 try-catch 错误处理
+ * Wrap tool function with try-catch error handling
  */
 function wrapToolFunc(
   name: string,
@@ -44,7 +44,7 @@ function wrapToolFunc(
   return async (input: Record<string, unknown>): Promise<string> => {
     try {
       const result = await func(input);
-      // 确保返回字符串
+      // Ensure string return
       if (typeof result === 'string') {
         return result;
       }
@@ -59,7 +59,7 @@ function wrapToolFunc(
 }
 
 /**
- * 将本地工具定义转换为 LangChain DynamicStructuredTool
+ * Convert local tool definition to LangChain DynamicStructuredTool
  */
 function convertToLangChainTool(
   toolDef: LocalToolDefinition
@@ -73,22 +73,25 @@ function convertToLangChainTool(
 }
 
 /**
- * 从文件加载工具定义
+ * Load tool definition from TypeScript file using bundle-require
  */
 async function loadToolFromFile(
-  filePath: string
+  filePath: string,
+  cwd: string
 ): Promise<LocalToolDefinition | null> {
   const fileName = basename(filePath);
 
   try {
-    // 使用 file:// URL 进行动态导入（ESM 要求）
-    const fileUrl = pathToFileURL(filePath).href;
-    const module = await import(fileUrl);
+    // Use bundle-require to dynamically load TypeScript file
+    const { mod } = await bundleRequire({
+      filepath: filePath,
+      cwd,
+    });
 
-    // 尝试获取默认导出或命名导出
-    const toolExport = module.default || module;
+    // Try to get default export or named export
+    const toolExport = mod.default || mod;
 
-    // 如果模块导出多个工具定义，取第一个有效的
+    // If module exports multiple tool definitions, take first valid one
     if (Array.isArray(toolExport)) {
       for (const item of toolExport) {
         if (isValidToolExport(item)) {
@@ -99,17 +102,17 @@ async function loadToolFromFile(
       return null;
     }
 
-    // 检查是否有效
+    // Check if valid
     if (isValidToolExport(toolExport)) {
       return toolExport;
     }
 
-    // 检查是否有 name, description, schema, func 作为单独导出
+    // Check if name, description, schema, func are separate exports
     const namedExport = {
-      name: module.name,
-      description: module.description,
-      schema: module.schema,
-      func: module.func,
+      name: mod.name,
+      description: mod.description,
+      schema: mod.schema,
+      func: mod.func,
     };
 
     if (isValidToolExport(namedExport)) {
@@ -130,22 +133,14 @@ async function loadToolFromFile(
 }
 
 /**
- * 加载目录下的所有本地工具
+ * Load all local tools from directory
  *
- * 扫描指定目录下的 *.ts 文件，动态导入并验证工具定义，
- * 将有效的工具转换为 LangChain DynamicStructuredTool。
+ * Scans specified directory for *.ts files, dynamically imports and validates tool definitions,
+ * converts valid tools to LangChain DynamicStructuredTool.
  *
- * @param dir - 工具目录路径（相对或绝对路径）
- * @param cwd - 工作目录，默认为 process.cwd()
- * @returns DynamicStructuredTool 数组
- *
- * @example
- * ```ts
- * import { loadLocalTools } from './tools/local-loader.js';
- *
- * const tools = await loadLocalTools('./src/tools');
- * console.log(`Loaded ${tools.length} tools`);
- * ```
+ * @param dir - Tools directory path (relative or absolute)
+ * @param cwd - Working directory, defaults to process.cwd()
+ * @returns Array of DynamicStructuredTool
  */
 export async function loadLocalTools(
   dir: string,
@@ -154,7 +149,7 @@ export async function loadLocalTools(
   const workDir = cwd || process.cwd();
   const toolsDir = resolve(workDir, dir);
 
-  // 检查目录是否存在
+  // Check if directory exists
   if (!existsSync(toolsDir)) {
     logger.warn(`Tools directory not found: ${toolsDir}`);
     return [];
@@ -162,7 +157,7 @@ export async function loadLocalTools(
 
   logger.debug(`Scanning tools directory: ${toolsDir}`);
 
-  // 查找所有 .ts 文件（排除 .d.ts 和 index.ts）
+  // Find all .ts files (exclude .d.ts and index.ts)
   const pattern = '**/*.ts';
   const files = await glob(pattern, {
     cwd: toolsDir,
@@ -177,15 +172,15 @@ export async function loadLocalTools(
 
   logger.debug(`Found ${files.length} potential tool file(s)`);
 
-  // 加载每个文件中的工具
+  // Load tools from each file
   const tools: DynamicStructuredTool[] = [];
   const loadedNames = new Set<string>();
 
   for (const file of files) {
-    const toolDef = await loadToolFromFile(file);
+    const toolDef = await loadToolFromFile(file, workDir);
 
     if (toolDef) {
-      // 检查工具名称是否重复
+      // Check for duplicate tool names
       if (loadedNames.has(toolDef.name)) {
         logger.warn(
           `Skipping duplicate tool "${toolDef.name}" from ${basename(file)}`
@@ -205,7 +200,7 @@ export async function loadLocalTools(
 }
 
 /**
- * 获取工具目录中的工具文件列表
+ * Get list of tool files in directory
  */
 export async function listToolFiles(
   dir: string,
@@ -224,4 +219,3 @@ export async function listToolFiles(
     ignore: ['**/*.d.ts', '**/index.ts', '**/*.test.ts', '**/*.spec.ts'],
   });
 }
-

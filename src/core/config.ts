@@ -6,12 +6,12 @@ import { DeepConfig, DeepConfigSchema } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * 配置文件名
+ * Configuration file name
  */
 const CONFIG_FILE_NAME = 'deep.config.ts';
 
 /**
- * 配置加载错误类
+ * Configuration loading error class
  */
 export class ConfigError extends Error {
   constructor(
@@ -24,8 +24,8 @@ export class ConfigError extends Error {
 }
 
 /**
- * 从环境变量获取 API Key
- * 优先级: DEEPSEEK_API_KEY > OPENAI_API_KEY > ANTHROPIC_API_KEY
+ * Get API key from environment variables
+ * Priority: DEEPSEEK_API_KEY > OPENAI_API_KEY > ANTHROPIC_API_KEY
  */
 function getApiKeyFromEnv(): string | undefined {
   return (
@@ -36,10 +36,10 @@ function getApiKeyFromEnv(): string | undefined {
 }
 
 /**
- * 合并环境变量中的 API Key 到配置
+ * Merge API key from environment variables into config
  */
 function mergeApiKeyFromEnv(config: DeepConfig): DeepConfig {
-  // 如果配置中已有 apiKey，则不覆盖
+  // If apiKey is already in config, don't override
   if (config.agent.model.configuration?.apiKey) {
     return config;
   }
@@ -49,7 +49,7 @@ function mergeApiKeyFromEnv(config: DeepConfig): DeepConfig {
     return config;
   }
 
-  // 创建新配置对象，合并环境变量中的 apiKey
+  // Create new config object with merged apiKey from env
   return {
     ...config,
     agent: {
@@ -66,7 +66,7 @@ function mergeApiKeyFromEnv(config: DeepConfig): DeepConfig {
 }
 
 /**
- * 格式化 Zod 验证错误
+ * Format Zod validation error
  */
 function formatZodError(error: ZodError): string {
   const issues = error.issues.map((issue) => {
@@ -77,31 +77,17 @@ function formatZodError(error: ZodError): string {
 }
 
 /**
- * 加载并验证配置文件
+ * Load and validate configuration file
  *
- * @param cwd - 工作目录，默认为 process.cwd()
- * @returns 验证后的 DeepConfig 对象
- * @throws ConfigError 当配置文件不存在或验证失败时
- *
- * @example
- * ```ts
- * import { loadConfig } from './core/config.js';
- *
- * try {
- *   const config = await loadConfig();
- *   console.log(config.agent.name);
- * } catch (error) {
- *   if (error instanceof ConfigError) {
- *     console.error(error.message);
- *   }
- * }
- * ```
+ * @param cwd - Working directory, defaults to process.cwd()
+ * @returns Validated DeepConfig object
+ * @throws ConfigError when config file not found or validation fails
  */
 export async function loadConfig(cwd?: string): Promise<DeepConfig> {
   const workDir = cwd || process.cwd();
   const configPath = resolve(workDir, CONFIG_FILE_NAME);
 
-  // 检查配置文件是否存在
+  // Check if config file exists
   if (!existsSync(configPath)) {
     throw new ConfigError(
       `Configuration file not found: ${CONFIG_FILE_NAME}\n` +
@@ -113,13 +99,13 @@ export async function loadConfig(cwd?: string): Promise<DeepConfig> {
   logger.debug(`Loading config from: ${configPath}`);
 
   try {
-    // 使用 bundle-require 动态加载 TypeScript 配置
+    // Use bundle-require to dynamically load TypeScript config
     const { mod } = await bundleRequire({
       filepath: configPath,
       cwd: workDir,
     });
 
-    // 获取默认导出或命名导出
+    // Get default export or named export
     const rawConfig = mod.default || mod;
 
     if (!rawConfig) {
@@ -130,7 +116,7 @@ export async function loadConfig(cwd?: string): Promise<DeepConfig> {
       );
     }
 
-    // 使用 Zod Schema 验证配置
+    // Validate config with Zod schema
     let config: DeepConfig;
     try {
       config = DeepConfigSchema.parse(rawConfig);
@@ -141,10 +127,10 @@ export async function loadConfig(cwd?: string): Promise<DeepConfig> {
       throw error;
     }
 
-    // 合并环境变量中的 API Key
+    // Merge API key from environment variables
     config = mergeApiKeyFromEnv(config);
 
-    // 验证必要的配置
+    // Validate required configuration
     if (!config.agent.model.configuration?.apiKey) {
       logger.warn(
         'No API key found in config or environment variables.\n' +
@@ -153,7 +139,7 @@ export async function loadConfig(cwd?: string): Promise<DeepConfig> {
       );
     }
 
-    // 日志输出（不暴露敏感信息）
+    // Log output (don't expose sensitive info)
     logger.debug(`Config loaded successfully`);
     logger.debug(`  Agent: ${config.agent.name || 'unnamed'}`);
     logger.debug(`  Model: ${config.agent.model.provider}/${config.agent.model.modelName}`);
@@ -162,12 +148,12 @@ export async function loadConfig(cwd?: string): Promise<DeepConfig> {
 
     return config;
   } catch (error) {
-    // 如果已经是 ConfigError，直接抛出
+    // If already ConfigError, rethrow
     if (error instanceof ConfigError) {
       throw error;
     }
 
-    // 包装其他错误
+    // Wrap other errors
     const message =
       error instanceof Error ? error.message : String(error);
     throw new ConfigError(
@@ -179,7 +165,7 @@ export async function loadConfig(cwd?: string): Promise<DeepConfig> {
 }
 
 /**
- * 检查配置文件是否存在
+ * Check if configuration file exists
  */
 export function configExists(cwd?: string): boolean {
   const workDir = cwd || process.cwd();
@@ -188,10 +174,9 @@ export function configExists(cwd?: string): boolean {
 }
 
 /**
- * 获取配置文件路径
+ * Get configuration file path
  */
 export function getConfigPath(cwd?: string): string {
   const workDir = cwd || process.cwd();
   return resolve(workDir, CONFIG_FILE_NAME);
 }
-

@@ -8,7 +8,7 @@ import { McpClientManager } from '../tools/mcp-adapter.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Agent 事件类型
+ * Agent event type
  */
 interface AgentEvent {
   type: 'thought' | 'action' | 'observation' | 'response';
@@ -18,22 +18,7 @@ interface AgentEvent {
 }
 
 /**
- * DeepRuntime Agent 引擎
- *
- * 核心运行时，负责：
- * - 加载和合并工具（本地、MCP、内置）
- * - 创建和管理 Agent
- * - 提供交互式 REPL 和无头任务执行
- *
- * @example
- * ```ts
- * const engine = new DeepRuntimeEngine(config);
- * await engine.initialize();
- * await engine.runInteractive();  // REPL 模式
- * // 或
- * const result = await engine.runTask('完成某项任务');
- * await engine.shutdown();
- * ```
+ * DeepRuntime Agent Engine
  */
 export class DeepRuntimeEngine {
   private config: DeepConfig;
@@ -51,8 +36,8 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * 初始化引擎
-   * 加载工具、连接 MCP、创建 Agent
+   * Initialize engine
+   * Load tools, connect MCP, create agent
    */
   async initialize(): Promise<void> {
     if (this.initialized) {
@@ -64,13 +49,13 @@ export class DeepRuntimeEngine {
     logger.subtitle(`Agent: ${this.config.agent.name || 'unnamed'}`);
     logger.newline();
 
-    // 1. 创建 LLM 实例
+    // 1. Create LLM instance
     await this.initializeLLM();
 
-    // 2. 加载工具
+    // 2. Load tools
     await this.loadTools();
 
-    // 3. 创建 Agent
+    // 3. Create agent
     await this.createAgent();
 
     this.initialized = true;
@@ -79,7 +64,7 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * 初始化 LLM
+   * Initialize LLM
    */
   private async initializeLLM(): Promise<void> {
     logger.info('Initializing LLM...');
@@ -87,7 +72,7 @@ export class DeepRuntimeEngine {
     const modelConfig = this.config.agent.model;
     const configuration = modelConfig.configuration || {};
 
-    // 验证 API Key
+    // Validate API key
     if (!configuration.apiKey) {
       throw new Error(
         'API key is required. Set it in config or environment variables.'
@@ -110,20 +95,20 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * 加载所有工具
+   * Load all tools
    */
   private async loadTools(): Promise<void> {
     logger.info('Loading tools...');
     this.tools = [];
 
-    // 1. 加载本地工具
+    // 1. Load local tools
     const localTools = await loadLocalTools(
       this.config.tools.localDir,
       process.cwd()
     );
     this.tools.push(...localTools);
 
-    // 2. 加载 MCP 工具
+    // 2. Load MCP tools
     if (this.config.tools.mcpServers) {
       this.mcpManager = new McpClientManager(this.config.tools.mcpServers);
       await this.mcpManager.connect();
@@ -131,12 +116,12 @@ export class DeepRuntimeEngine {
       this.tools.push(...mcpTools);
     }
 
-    // 3. deepagents 内置工具会在 createDeepAgent 时自动添加
+    // 3. Built-in tools from deepagents are automatically added in createDeepAgent
     logger.debug(`Loaded ${this.tools.length} external tool(s)`);
   }
 
   /**
-   * 创建 Agent
+   * Create agent
    */
   private async createAgent(): Promise<void> {
     logger.info('Creating agent...');
@@ -147,7 +132,7 @@ export class DeepRuntimeEngine {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.agent = createDeepAgent({
-      llm: this.llm,
+      model: this.llm,
       tools: this.tools,
       prompt: this.config.agent.systemPrompt,
     } as any);
@@ -156,7 +141,7 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * 运行交互式 REPL 模式
+   * Run interactive REPL mode
    */
   async runInteractive(): Promise<void> {
     if (!this.agent || !this.llm) {
@@ -167,21 +152,21 @@ export class DeepRuntimeEngine {
     logger.info('Interactive mode. Type "exit" or press Ctrl+C to quit.');
     logger.divider();
 
-    // 创建 readline 接口
+    // Create readline interface
     this.readline = createInterface({
       input: process.stdin,
       output: process.stdout,
     });
 
-    // 处理 Ctrl+C
+    // Handle Ctrl+C
     this.setupSignalHandlers();
 
-    // REPL 循环
+    // REPL loop
     await this.replLoop();
   }
 
   /**
-   * 设置信号处理
+   * Setup signal handlers
    */
   private setupSignalHandlers(): void {
     const handleShutdown = async () => {
@@ -204,7 +189,7 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * REPL 循环
+   * REPL loop
    */
   private async replLoop(): Promise<void> {
     while (!this.isShuttingDown) {
@@ -213,12 +198,12 @@ export class DeepRuntimeEngine {
 
         if (!userInput) continue;
 
-        // 检查退出命令
+        // Check exit command
         if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
           break;
         }
 
-        // 执行任务
+        // Execute task
         await this.executeTask(userInput);
       } catch (error) {
         if (this.isShuttingDown) break;
@@ -233,7 +218,7 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * 提示用户输入
+   * Prompt user for input
    */
   private promptUser(): Promise<string> {
     return new Promise((resolve) => {
@@ -255,7 +240,7 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * 执行任务并流式输出
+   * Execute task with streaming output
    */
   private async executeTask(input: string): Promise<string> {
     if (!this.agent) {
@@ -265,16 +250,16 @@ export class DeepRuntimeEngine {
     logger.newline();
 
     try {
-      // 调用 agent
+      // Invoke agent
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await (this.agent as any).invoke({
         messages: [{ role: 'user', content: input }],
       });
 
-      // 处理事件流
+      // Process event stream
       this.processAgentEvents(result);
 
-      // 获取最终响应
+      // Get final response
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const messages = result.messages as any[];
       const lastMessage = messages[messages.length - 1];
@@ -297,16 +282,16 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * 处理 Agent 事件
+   * Process agent events
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private processAgentEvents(result: any): void {
     const messages = (result?.messages ?? []) as Array<{ role?: string; content?: unknown; name?: string }>;
     for (const message of messages) {
       if (message.role === 'assistant') {
-        // 思考内容
+        // Thinking content
         if (typeof message.content === 'string' && message.content) {
-          // 检查是否是工具调用
+          // Check if it's a tool call
           if (message.name) {
             logger.action(`Tool: ${message.name}`);
           } else {
@@ -314,7 +299,7 @@ export class DeepRuntimeEngine {
           }
         }
       } else if (message.role === 'tool') {
-        // 工具结果
+        // Tool result
         const content = typeof message.content === 'string'
           ? message.content
           : JSON.stringify(message.content);
@@ -327,7 +312,7 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * 执行单次任务（无头模式）
+   * Execute single task (headless mode)
    */
   async runTask(task: string): Promise<string> {
     if (!this.agent || !this.llm) {
@@ -350,45 +335,45 @@ export class DeepRuntimeEngine {
   }
 
   /**
-   * 获取已加载的工具列表
+   * Get loaded tools list
    */
   getTools(): DynamicStructuredTool[] {
     return [...this.tools];
   }
 
   /**
-   * 获取工具名称列表
+   * Get tool names list
    */
   getToolNames(): string[] {
     return this.tools.map((tool) => tool.name);
   }
 
   /**
-   * 检查是否已初始化
+   * Check if initialized
    */
   isInitialized(): boolean {
     return this.initialized;
   }
 
   /**
-   * 关闭引擎
+   * Shutdown engine
    */
   async shutdown(): Promise<void> {
     logger.debug('Shutting down engine...');
 
-    // 关闭 readline
+    // Close readline
     if (this.readline) {
       this.readline.close();
       this.readline = null;
     }
 
-    // 断开 MCP 连接
+    // Disconnect MCP connections
     if (this.mcpManager) {
       await this.mcpManager.disconnect();
       this.mcpManager = null;
     }
 
-    // 清理
+    // Cleanup
     this.agent = null;
     this.llm = null;
     this.tools = [];
@@ -399,9 +384,8 @@ export class DeepRuntimeEngine {
 }
 
 /**
- * 创建 DeepRuntime 引擎实例
+ * Create DeepRuntime engine instance
  */
 export function createEngine(config: DeepConfig): DeepRuntimeEngine {
   return new DeepRuntimeEngine(config);
 }
-
