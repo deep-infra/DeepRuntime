@@ -9,7 +9,7 @@ import { loadConfig, ConfigError } from '../core/config.js';
 import { loadLocalTools } from '../tools/local-loader.js';
 
 /**
- * 日志到 stderr（MCP Server 模式下不能使用 stdout）
+ * Log to stderr (MCP Server mode cannot use stdout)
  */
 const log = {
   info: (msg: string) => console.error(`[INFO] ${msg}`),
@@ -22,14 +22,14 @@ const log = {
 };
 
 /**
- * 将 Zod Schema 转换为 JSON Schema
+ * Convert Zod Schema to JSON Schema
  */
 function zodToJsonSchema(zodSchema: DynamicStructuredTool['schema']): {
   type: string;
   properties: Record<string, unknown>;
   required?: string[];
 } {
-  // 简单转换，获取 schema 的 shape
+  // Simple conversion, get schema shape
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const schemaAny = zodSchema as any;
   const shape = (schemaAny.shape ?? {}) as Record<string, { description?: string; _def?: { typeName?: string } }>;
@@ -55,7 +55,7 @@ function zodToJsonSchema(zodSchema: DynamicStructuredTool['schema']): {
       description: value.description || '',
     };
 
-    // 检查是否必需（非 optional）
+    // Check if required (non-optional)
     if (!typeName.includes('Optional')) {
       required.push(key);
     }
@@ -69,15 +69,15 @@ function zodToJsonSchema(zodSchema: DynamicStructuredTool['schema']): {
 }
 
 /**
- * serve 命令实现
- * 启动 MCP Server 模式，让 Cursor/Claude 等 IDE 调用本地工具
+ * serve command implementation
+ * Start MCP Server mode, allowing IDEs like Cursor/Claude to call local tools
  */
 export async function serveCommand(): Promise<void> {
   let tools: DynamicStructuredTool[] = [];
   const toolMap = new Map<string, DynamicStructuredTool>();
 
   try {
-    // 1. 加载配置
+    // 1. Load configuration
     log.info('Loading configuration...');
 
     let config;
@@ -92,18 +92,18 @@ export async function serveCommand(): Promise<void> {
       process.exit(1);
     }
 
-    // 2. 加载本地工具
+    // 2. Load local tools
     log.info('Loading local tools...');
     tools = await loadLocalTools(config.tools.localDir, process.cwd());
 
-    // 建立工具名称映射
+    // Build tool name mapping
     for (const tool of tools) {
       toolMap.set(tool.name, tool);
     }
 
     log.info(`Loaded ${tools.length} tool(s)`);
 
-    // 3. 创建 MCP Server
+    // 3. Create MCP Server
     const server = new Server(
       {
         name: 'deepruntime',
@@ -116,7 +116,7 @@ export async function serveCommand(): Promise<void> {
       }
     );
 
-    // 4. 实现 ListTools 处理器
+    // 4. Implement ListTools handler
     server.setRequestHandler(ListToolsRequestSchema, async () => {
       log.debug('Received ListTools request');
 
@@ -129,7 +129,7 @@ export async function serveCommand(): Promise<void> {
       };
     });
 
-    // 5. 实现 CallTool 处理器
+    // 5. Implement CallTool handler
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
       log.debug(`Received CallTool request: ${name}`);
@@ -150,10 +150,10 @@ export async function serveCommand(): Promise<void> {
       }
 
       try {
-        // 执行工具
+        // Execute tool
         const result = await tool.invoke(args || {});
 
-        // 格式化结果
+        // Format result
         const textResult = typeof result === 'string' 
           ? result 
           : JSON.stringify(result, null, 2);
@@ -184,14 +184,14 @@ export async function serveCommand(): Promise<void> {
       }
     });
 
-    // 6. 连接 Stdio 传输
+    // 6. Connect Stdio transport
     log.info('Starting MCP server via stdio...');
     const transport = new StdioServerTransport();
     await server.connect(transport);
 
     log.info('MCP server is running. Waiting for requests...');
 
-    // 保持进程运行
+    // Keep process running
     process.on('SIGINT', async () => {
       log.info('Shutting down MCP server...');
       await server.close();
@@ -210,4 +210,3 @@ export async function serveCommand(): Promise<void> {
     process.exit(1);
   }
 }
-

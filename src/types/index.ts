@@ -1,35 +1,35 @@
 import { z } from 'zod';
 
 /**
- * MCP Server 配置 Schema
- * 用于定义外部 MCP Server 的连接参数
+ * MCP Server configuration schema
+ * Defines connection parameters for external MCP servers
  */
 export const McpServerConfigSchema = z.object({
-  /** 启动 MCP Server 的命令 */
+  /** Command to start the MCP server */
   command: z.string(),
-  /** 命令参数 */
+  /** Command arguments */
   args: z.array(z.string()),
-  /** 环境变量 */
+  /** Environment variables */
   env: z.record(z.string()).optional(),
 });
 
 export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
 /**
- * 模型配置 Schema
- * 支持 OpenAI 兼容接口的任意模型
+ * Model configuration schema
+ * Supports any model with OpenAI-compatible API
  */
 export const ModelConfigSchema = z.object({
-  /** 模型提供商 */
+  /** Model provider */
   provider: z.enum(['openai', 'anthropic']),
-  /** 模型名称，如 "deepseek-chat", "llama3", "gpt-4o" */
+  /** Model name, e.g. "deepseek-chat", "llama3", "gpt-4o" */
   modelName: z.string(),
-  /** 模型连接配置 */
+  /** Model connection configuration */
   configuration: z
     .object({
-      /** API 基础 URL，如 "https://api.deepseek.com/v1" 或 "http://localhost:11434/v1" */
+      /** API base URL, e.g. "https://api.deepseek.com/v1" or "http://localhost:11434/v1" */
       baseURL: z.string().optional(),
-      /** API 密钥 */
+      /** API key */
       apiKey: z.string().optional(),
     })
     .optional(),
@@ -38,77 +38,77 @@ export const ModelConfigSchema = z.object({
 export type ModelConfig = z.infer<typeof ModelConfigSchema>;
 
 /**
- * Agent 配置 Schema
- * 定义 Agent 的身份和大脑
+ * Agent configuration schema
+ * Defines the agent's identity and brain
  */
 export const AgentConfigSchema = z.object({
-  /** Agent 名称 */
+  /** Agent name */
   name: z.string().optional(),
-  /** 系统提示词 */
+  /** System prompt */
   systemPrompt: z.string(),
-  /** 模型配置 */
+  /** Model configuration */
   model: ModelConfigSchema,
 });
 
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 
 /**
- * 工具配置 Schema
- * 定义工具来源
+ * Tools configuration schema
+ * Defines tool sources
  */
 export const ToolsConfigSchema = z.object({
-  /** 本地工具目录，如 "./src/tools" */
+  /** Local tools directory, e.g. "./src/tools" */
   localDir: z.string(),
-  /** MCP Server 配置映射 */
+  /** MCP server configuration map */
   mcpServers: z.record(McpServerConfigSchema).optional(),
 });
 
 export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
 
 /**
- * 运行时配置 Schema
+ * Runtime configuration schema
  */
 export const RuntimeConfigSchema = z.object({
-  /** 任务超时时间（毫秒） */
+  /** Task timeout in milliseconds */
   timeout: z.number().optional(),
-  /** 沙箱模式，MVP 仅支持 "local" */
+  /** Sandbox mode, MVP only supports "local" */
   sandbox: z.enum(['local']).optional(),
 });
 
 export type RuntimeConfig = z.infer<typeof RuntimeConfigSchema>;
 
 /**
- * DeepConfig 主配置 Schema
- * 这是 deep.config.ts 的完整结构
+ * DeepConfig main configuration schema
+ * This is the complete structure for deep.config.ts
  */
 export const DeepConfigSchema = z.object({
-  /** Agent 配置 */
+  /** Agent configuration */
   agent: AgentConfigSchema,
-  /** 工具配置 */
+  /** Tools configuration */
   tools: ToolsConfigSchema,
-  /** 运行时配置 */
+  /** Runtime configuration */
   runtime: RuntimeConfigSchema.optional(),
 });
 
 export type DeepConfig = z.infer<typeof DeepConfigSchema>;
 
 /**
- * 本地工具定义接口
- * 用户在 src/tools/*.ts 中导出的工具结构
+ * Local tool definition interface
+ * Structure for tools exported from src/tools/*.ts
  */
 export interface LocalToolDefinition {
-  /** 工具名称 */
+  /** Tool name */
   name: string;
-  /** 工具描述 */
+  /** Tool description */
   description: string;
-  /** 输入参数 Zod Schema */
+  /** Input parameters Zod schema */
   schema: z.ZodObject<z.ZodRawShape>;
-  /** 工具执行函数 */
+  /** Tool execution function */
   func: (input: Record<string, unknown>) => Promise<unknown>;
 }
 
 /**
- * 验证本地工具定义
+ * Validate local tool definition
  */
 export const LocalToolDefinitionSchema = z.object({
   name: z.string(),
@@ -118,10 +118,9 @@ export const LocalToolDefinitionSchema = z.object({
 });
 
 /**
- * 定义配置的辅助函数
- * 提供类型推断和自动补全
+ * Configuration helper function
+ * Provides type inference and auto-completion
  */
 export function defineConfig(config: DeepConfig): DeepConfig {
   return DeepConfigSchema.parse(config);
 }
-

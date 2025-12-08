@@ -7,7 +7,7 @@ import { logger } from '../utils/logger.js';
 import type { McpServerConfig } from '../types/index.js';
 
 /**
- * MCP 客户端连接状态
+ * MCP client connection state
  */
 interface McpConnection {
   name: string;
@@ -18,7 +18,7 @@ interface McpConnection {
 }
 
 /**
- * MCP 工具信息（从 listTools 返回）
+ * MCP tool info (from listTools response)
  */
 interface McpToolInfo {
   name: string;
@@ -31,7 +31,7 @@ interface McpToolInfo {
 }
 
 /**
- * 将 JSON Schema 转换为 Zod Schema
+ * Convert JSON Schema to Zod Schema
  */
 function jsonSchemaToZod(
   schema?: McpToolInfo['inputSchema']
@@ -83,23 +83,9 @@ function jsonSchemaToZod(
 }
 
 /**
- * MCP 客户端管理器
+ * MCP Client Manager
  *
- * 管理多个 MCP Server 连接，将远程工具转换为 LangChain 工具。
- *
- * @example
- * ```ts
- * const manager = new McpClientManager({
- *   filesystem: {
- *     command: 'npx',
- *     args: ['-y', '@modelcontextprotocol/server-filesystem', '/path'],
- *   },
- * });
- *
- * await manager.connect();
- * const tools = manager.getTools();
- * await manager.disconnect();
- * ```
+ * Manages multiple MCP server connections, converts remote tools to LangChain tools.
  */
 export class McpClientManager {
   private servers: Record<string, McpServerConfig>;
@@ -111,7 +97,7 @@ export class McpClientManager {
   }
 
   /**
-   * 连接所有配置的 MCP Server
+   * Connect to all configured MCP servers
    */
   async connect(): Promise<void> {
     const serverNames = Object.keys(this.servers);
@@ -130,11 +116,11 @@ export class McpClientManager {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         logger.warn(`Failed to connect to MCP server "${name}": ${errorMessage}`);
-        // 继续连接其他服务器
+        // Continue connecting to other servers
       }
     }
 
-    // 加载所有连接服务器的工具
+    // Load tools from all connected servers
     await this.loadAllTools();
 
     const connectedCount = this.connections.size;
@@ -144,7 +130,7 @@ export class McpClientManager {
   }
 
   /**
-   * 连接单个 MCP Server
+   * Connect to single MCP server
    */
   private async connectServer(
     name: string,
@@ -152,7 +138,7 @@ export class McpClientManager {
   ): Promise<void> {
     logger.debug(`Connecting to MCP server: ${name}`);
 
-    // 合并环境变量，过滤掉 undefined 值
+    // Merge environment variables, filter out undefined values
     const env: Record<string, string> = {};
     for (const [key, value] of Object.entries({ ...process.env, ...config.env })) {
       if (value !== undefined) {
@@ -160,13 +146,13 @@ export class McpClientManager {
       }
     }
 
-    // 启动子进程
+    // Start child process
     const childProcess = spawn(config.command, config.args, {
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    // 监听进程错误
+    // Listen for process errors
     childProcess.on('error', (error) => {
       logger.error(`MCP server "${name}" process error: ${error.message}`);
       this.handleDisconnect(name);
@@ -179,14 +165,14 @@ export class McpClientManager {
       this.handleDisconnect(name);
     });
 
-    // 创建传输层
+    // Create transport layer
     const transport = new StdioClientTransport({
       command: config.command,
       args: config.args,
       env,
     });
 
-    // 创建客户端
+    // Create client
     const client = new Client(
       {
         name: `deepruntime-${name}`,
@@ -197,10 +183,10 @@ export class McpClientManager {
       }
     );
 
-    // 连接
+    // Connect
     await client.connect(transport);
 
-    // 保存连接
+    // Save connection
     this.connections.set(name, {
       name,
       client,
@@ -213,13 +199,13 @@ export class McpClientManager {
   }
 
   /**
-   * 处理断开连接
+   * Handle disconnection
    */
   private handleDisconnect(name: string): void {
     const connection = this.connections.get(name);
     if (connection) {
       connection.connected = false;
-      // 移除该服务器的工具
+      // Remove tools from this server
       this.tools = this.tools.filter(
         (tool) => !tool.name.startsWith(`mcp_${name}_`)
       );
@@ -227,7 +213,7 @@ export class McpClientManager {
   }
 
   /**
-   * 加载所有连接服务器的工具
+   * Load tools from all connected servers
    */
   private async loadAllTools(): Promise<void> {
     this.tools = [];
@@ -251,7 +237,7 @@ export class McpClientManager {
   }
 
   /**
-   * 从单个服务器加载工具
+   * Load tools from single server
    */
   private async loadServerTools(
     serverName: string,
@@ -270,7 +256,7 @@ export class McpClientManager {
   }
 
   /**
-   * 创建 LangChain 工具
+   * Create LangChain tool
    */
   private createLangChainTool(
     serverName: string,
@@ -293,7 +279,7 @@ export class McpClientManager {
             arguments: input,
           });
 
-          // 处理返回结果
+          // Process return result
           if (result.content && Array.isArray(result.content)) {
             const textContent = result.content
               .filter((item): item is { type: 'text'; text: string } => 
@@ -319,14 +305,14 @@ export class McpClientManager {
   }
 
   /**
-   * 获取所有已加载的工具
+   * Get all loaded tools
    */
   getTools(): DynamicStructuredTool[] {
     return [...this.tools];
   }
 
   /**
-   * 获取连接状态
+   * Get connection status
    */
   getConnectionStatus(): Record<string, boolean> {
     const status: Record<string, boolean> = {};
@@ -337,7 +323,7 @@ export class McpClientManager {
   }
 
   /**
-   * 检查是否有活跃连接
+   * Check if there are active connections
    */
   hasConnections(): boolean {
     for (const connection of this.connections.values()) {
@@ -349,7 +335,7 @@ export class McpClientManager {
   }
 
   /**
-   * 断开所有连接
+   * Disconnect all connections
    */
   async disconnect(): Promise<void> {
     logger.debug('Disconnecting from MCP servers...');
@@ -370,7 +356,7 @@ export class McpClientManager {
   }
 
   /**
-   * 断开单个服务器连接
+   * Disconnect single server connection
    */
   private async disconnectServer(
     name: string,
@@ -379,20 +365,20 @@ export class McpClientManager {
     logger.debug(`Disconnecting from MCP server: ${name}`);
 
     try {
-      // 关闭客户端连接
+      // Close client connection
       await connection.client.close();
     } catch {
-      // 忽略关闭错误
+      // Ignore close errors
     }
 
     try {
-      // 关闭传输层
+      // Close transport layer
       await connection.transport.close();
     } catch {
-      // 忽略关闭错误
+      // Ignore close errors
     }
 
-    // 终止子进程
+    // Terminate child process
     if (connection.process && !connection.process.killed) {
       connection.process.kill('SIGTERM');
     }
@@ -402,11 +388,10 @@ export class McpClientManager {
 }
 
 /**
- * 创建 MCP 客户端管理器
+ * Create MCP client manager
  */
 export function createMcpClientManager(
   servers?: Record<string, McpServerConfig>
 ): McpClientManager {
   return new McpClientManager(servers || {});
 }
-

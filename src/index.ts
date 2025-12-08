@@ -3,7 +3,7 @@
  * Config-as-Code Agent Runtime Engine
  */
 
-// 导出类型
+// Export types
 export type {
   DeepConfig,
   AgentConfig,
@@ -14,7 +14,7 @@ export type {
   LocalToolDefinition,
 } from './types/index.js';
 
-// 导出 Schema（用于外部验证）
+// Export schemas (for external validation)
 export {
   DeepConfigSchema,
   AgentConfigSchema,
@@ -25,4 +25,3 @@ export {
   LocalToolDefinitionSchema,
   defineConfig,
 } from './types/index.js';
-
