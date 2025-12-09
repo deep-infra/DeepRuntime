@@ -32,10 +32,26 @@ function getTemplatesDir(): string {
   const __dirname = dirname(__filename);
 
   // Template directory relative to compiled location
+  // rslib bundles files, so we need to check multiple possible locations
   const possiblePaths = [
+    // When running from dist/ (rslib bundled)
+    resolve(__dirname, '../templates'),       // dist/ -> templates/
     resolve(__dirname, '../../templates'),    // dist/commands/ -> templates/
-    resolve(__dirname, '../../../templates'), // dev mode or other structures
+    resolve(__dirname, '../../../templates'), // deeper nesting
+    // When running from source
+    resolve(__dirname, '../../templates'),    // src/commands/ -> templates/
   ];
+
+  // Also try to find package root by looking for package.json
+  let currentDir = __dirname;
+  for (let i = 0; i < 5; i++) {
+    const packageJsonPath = resolve(currentDir, 'package.json');
+    const templatesPath = resolve(currentDir, 'templates');
+    if (existsSync(packageJsonPath) && existsSync(templatesPath)) {
+      return templatesPath;
+    }
+    currentDir = dirname(currentDir);
+  }
 
   for (const path of possiblePaths) {
     if (existsSync(path)) {

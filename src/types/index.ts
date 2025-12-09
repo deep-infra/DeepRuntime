@@ -96,15 +96,15 @@ export type DeepConfig = z.infer<typeof DeepConfigSchema>;
  * Local tool definition interface
  * Structure for tools exported from src/tools/*.ts
  */
-export interface LocalToolDefinition {
+export interface LocalToolDefinition<T extends z.ZodRawShape = z.ZodRawShape> {
   /** Tool name */
   name: string;
   /** Tool description */
   description: string;
   /** Input parameters Zod schema */
-  schema: z.ZodObject<z.ZodRawShape>;
+  schema: z.ZodObject<T>;
   /** Tool execution function */
-  func: (input: Record<string, unknown>) => Promise<unknown>;
+  func: (input: z.infer<z.ZodObject<T>>) => Promise<unknown>;
 }
 
 /**
@@ -123,4 +123,34 @@ export const LocalToolDefinitionSchema = z.object({
  */
 export function defineConfig(config: DeepConfig): DeepConfig {
   return DeepConfigSchema.parse(config);
+}
+
+/**
+ * Tool definition helper function
+ * Provides automatic type inference from Zod schema - no manual typing needed!
+ * 
+ * @example
+ * ```ts
+ * export default defineTool({
+ *   name: 'greet',
+ *   description: 'Say hello',
+ *   schema: z.object({
+ *     name: z.string(),
+ *   }),
+ *   func: async (args) => {
+ *     // args.name is automatically typed as string!
+ *     return `Hello, ${args.name}!`;
+ *   },
+ * });
+ * ```
+ */
+export function defineTool<T extends z.ZodRawShape>(
+  tool: {
+    name: string;
+    description: string;
+    schema: z.ZodObject<T>;
+    func: (args: z.infer<z.ZodObject<T>>) => Promise<unknown>;
+  }
+): LocalToolDefinition<T> {
+  return tool;
 }
