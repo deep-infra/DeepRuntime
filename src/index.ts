@@ -24,4 +24,8 @@ export {
   McpServerConfigSchema,
   LocalToolDefinitionSchema,
   defineConfig,
+  defineTool,
 } from './types/index.js';
+
+// Re-export zod for convenience
+export { z } from 'zod';

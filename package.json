@@ -1,6 +1,6 @@
 {
   "name": "deepruntime-cli",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "description": "Config-as-Code Agent Runtime Engine for developers",
   "type": "module",
   "exports": {
